@@ -20,6 +20,7 @@
     typeFilter: $('#typeFilter'),
     studioFilter: $('#studioFilter'),
     tagFilter: $('#tagFilter'),
+    themeBtn: $('#themeBtn'),
     favBtn: $('#favBtn'),
     favCount: $('#favCount'),
     favPanel: $('#favorites'),
@@ -49,6 +50,12 @@
   function persistFavorites() {
     localStorage.setItem('anime-guide:favorites', JSON.stringify([...state.favorites]));
     el.favCount.textContent = state.favorites.size;
+  }
+
+  function applyTheme(light) {
+    document.body.classList.toggle('light', light);
+    el.themeBtn.textContent = light ? '🌙' : '☀️';
+    localStorage.setItem('anime-guide:theme', light ? 'light' : 'dark');
   }
 
   function toggleFav(id) {
@@ -130,7 +137,7 @@
         (tags.length ? '<span class="card-tags">' + tags.map((t) => '<span class="card-tag-chip">' + esc(t) + '</span>').join('') + '</span>' : '') +
       '</span>' +
       '<span class="card-title">' + esc(item.title) + '</span>' +
-      '<span class="card-studio">' + esc(item.studio || '') + '</span>' +
+      '<span class="card-original">' + esc(item.originalTitle && item.originalTitle !== item.title ? item.originalTitle : '') + '</span>' +
       '<span class="card-heart' + (isFav(item.id) ? ' active' : '') + '" data-id="' + item.id + '" title="追番">♥</span>' +
       '</button>';
   }
@@ -154,7 +161,7 @@
     const staff = item.staff || [];
     const cast = item.cast || [];
     const fav = isFav(item.id);
-    return '<div class="modal-hero" style="background-image:linear-gradient(180deg, rgba(0,0,0,.15), rgba(24,24,24,1)), url(\'' + esc(coverOf(item)) + '\')"></div>' +
+    return '<div class="modal-hero" style="background-image:linear-gradient(180deg, rgba(0,0,0,.2), var(--panel)), url(\'' + esc(coverOf(item)) + '\')"></div>' +
       '<div class="modal-inner">' +
         '<img class="modal-poster" src="' + esc(coverOf(item)) + '" alt="' + esc(item.title) + '" onerror="this.onerror=null;this.src=\'assets/placeholder.svg\'">' +
         '<div class="modal-info">' +
@@ -234,6 +241,9 @@
   });
 
   el.favBtn.addEventListener('click', () => { el.favPanel.hidden = !el.favPanel.hidden; });
+  el.themeBtn.addEventListener('click', () => {
+    applyTheme(!document.body.classList.contains('light'));
+  });
   el.search.addEventListener('input', (e) => { state.filters.q = e.target.value; renderRows(); renderHero(); });
   el.typeFilter.addEventListener('change', (e) => { state.filters.type = e.target.value; renderRows(); renderHero(); });
   el.studioFilter.addEventListener('change', (e) => { state.filters.studio = e.target.value; renderRows(); renderHero(); });
@@ -245,6 +255,7 @@
 
   async function init() {
     state.today = todayWeekday();
+    applyTheme(localStorage.getItem('anime-guide:theme') === 'light');
     try {
       const res = await fetch('data.json');
       if (!res.ok) throw new Error('HTTP ' + res.status);

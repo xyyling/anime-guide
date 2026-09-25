@@ -173,6 +173,7 @@ const META_TAGS = new Set([
   '动画制作', 'bilibili', '哔哩哔哩',
 ]);
 const META_TAG_RE = /^(\d{4}年|\d{1,2}月|第.+季)$/;
+const R18_TAGS = new Set(['里番', '成人向', '18禁', 'R18']);
 
 function pickTags(tags) {
   const out = [];
@@ -217,6 +218,7 @@ async function enrich(bd) {
     staff: [],
     cast: [],
     tags: [],
+    isR18: false,
     website: bd.website || '',
     bgmUrl: 'https://bgm.tv/subject/' + id,
   };
@@ -234,6 +236,8 @@ async function enrich(bd) {
     base.website = extractWebsite(infobox) || base.website;
     base.staff = staffFromInfobox(infobox);
     base.tags = pickTags(subject.tags || []);
+    const rawTags = Array.isArray(subject.tags) ? subject.tags.map((t) => t && t.name) : [];
+    base.isR18 = rawTags.some((n) => R18_TAGS.has(n));
 
     const [pRes, cRes] = await Promise.allSettled([
       bgmGet(BGM + '/v0/subjects/' + id + '/persons?limit=50'),
@@ -307,9 +311,11 @@ async function main() {
   if (!seasonItems.length) throw new Error('No season entries found in dataset.');
 
   const enriched = await mapWithConcurrency(seasonItems, CONCURRENCY, enrich);
+  const filtered = enriched.filter((e) => !e.isR18);
+  console.log('Filtered out ' + (enriched.length - filtered.length) + ' R18 entries.');
   const days = [];
   for (let w = 1; w <= 7; w++) {
-    days.push({ weekday: w, label: WEEKDAY_LABELS[w], items: enriched.filter((e) => e.weekday === w) });
+    days.push({ weekday: w, label: WEEKDAY_LABELS[w], items: filtered.filter((e) => e.weekday === w) });
   }
 
   const data = { generatedAt: new Date().toISOString(), season: SEASON_LABEL, days };
