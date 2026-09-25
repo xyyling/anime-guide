@@ -128,7 +128,7 @@ select {
 .row-count { color: var(--muted); font-size: 14px; font-weight: 400; }
 .row-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(6, 1fr);
   gap: 14px;
 }
 
@@ -145,16 +145,32 @@ select {
   transition: transform .18s ease, box-shadow .18s ease;
 }
 .card:hover { transform: scale(1.03) translateY(-3px); box-shadow: 0 12px 28px rgba(0,0,0,.6); z-index: 5; }
-.card img { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; background: #222; }
+.card-poster { position: relative; display: block; aspect-ratio: 2 / 3; overflow: hidden; background: #222; }
+.card-poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .card-title { display: block; padding: 10px 12px 12px; font-size: 14px; line-height: 1.3; min-height: 44px; }
-.card-tag {
-  display: block;
-  padding: 0 12px 12px;
-  font-size: 12px;
-  color: var(--muted);
+.card-tags {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 22px 8px 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  background: linear-gradient(transparent, rgba(0,0,0,.88));
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity .18s ease, transform .18s ease;
+  pointer-events: none;
+}
+.card:hover .card-tags { opacity: 1; transform: translateY(0); }
+.card-tag-chip {
+  background: rgba(255,255,255,.18);
+  color: #fff;
+  border-radius: 10px;
+  padding: 2px 7px;
+  font-size: 11px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .card-heart {
   position: absolute;
@@ -293,7 +309,12 @@ select {
   .navbar { padding-left: 16px; padding-right: 16px; }
   .nav-tools { width: 100%; margin-left: 0; }
   #search { flex: 1; min-width: 0; }
+  .row-grid { grid-template-columns: repeat(3, 1fr); }
   .modal-inner { flex-direction: column; align-items: center; margin-top: -70px; }
   .modal-poster { width: 150px; height: 225px; }
   .fav-panel { right: 12px; left: 12px; width: auto; }
+}
+
+@media (max-width: 480px) {
+  .row-grid { grid-template-columns: repeat(2, 1fr); }
 }

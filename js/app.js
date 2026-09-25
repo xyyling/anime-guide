@@ -123,10 +123,13 @@
   }
 
   function cardHtml(item) {
+    const tags = item.tags || [];
     return '<button class="card" type="button" data-id="' + item.id + '">' +
-      '<img src="' + esc(coverOf(item)) + '" alt="' + esc(item.title) + '" loading="lazy" onerror="this.onerror=null;this.src=\'assets/placeholder.svg\'">' +
+      '<span class="card-poster">' +
+        '<img src="' + esc(coverOf(item)) + '" alt="' + esc(item.title) + '" loading="lazy" onerror="this.onerror=null;this.src=\'assets/placeholder.svg\'">' +
+        (tags.length ? '<span class="card-tags">' + tags.map((t) => '<span class="card-tag-chip">' + esc(t) + '</span>').join('') + '</span>' : '') +
+      '</span>' +
       '<span class="card-title">' + esc(item.title) + '</span>' +
-      (item.tags && item.tags[0] ? '<span class="card-tag">' + esc(item.tags[0]) + '</span>' : '') +
       '<span class="card-heart' + (isFav(item.id) ? ' active' : '') + '" data-id="' + item.id + '" title="追番">♥</span>' +
       '</button>';
   }
