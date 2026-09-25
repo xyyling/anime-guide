@@ -130,6 +130,7 @@
         (tags.length ? '<span class="card-tags">' + tags.map((t) => '<span class="card-tag-chip">' + esc(t) + '</span>').join('') + '</span>' : '') +
       '</span>' +
       '<span class="card-title">' + esc(item.title) + '</span>' +
+      '<span class="card-studio">' + esc(item.studio || '') + '</span>' +
       '<span class="card-heart' + (isFav(item.id) ? ' active' : '') + '" data-id="' + item.id + '" title="追番">♥</span>' +
       '</button>';
   }
