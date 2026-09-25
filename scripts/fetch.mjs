@@ -172,15 +172,25 @@ const META_TAGS = new Set([
   'TV', 'WEB', '剧场版', 'OVA', '动漫', '新番', '连载', '完结', '改编',
   '动画制作', 'bilibili', '哔哩哔哩',
 ]);
-const META_TAG_RE = /^(\d{4}年|\d{1,2}月|第.+季)$/;
 const R18_TAGS = new Set(['里番', '成人向', '18禁', 'R18']);
 
-function pickTags(tags) {
+function isMetaTag(n) {
+  if (META_TAGS.has(n)) return true;
+  if (/^\d{4}$/.test(n)) return true;          // 2026
+  if (/^\d{4}年/.test(n)) return true;         // 2026年、2026年10月
+  if (/^\d{1,2}月/.test(n)) return true;       // 10月、10月新番
+  if (/^第.+季$/.test(n)) return true;         // 第二季
+  if (/^[春秋冬夏]季$/.test(n)) return true;   // 秋季、春季
+  return false;
+}
+
+function pickTags(tags, excludeNames) {
   const out = [];
+  const excluded = new Set((excludeNames || []).filter(Boolean));
   for (const t of (Array.isArray(tags) ? tags : [])) {
     if (!t || !t.name) continue;
     const n = String(t.name).trim();
-    if (!n || META_TAGS.has(n) || META_TAG_RE.test(n)) continue;
+    if (!n || excluded.has(n) || isMetaTag(n)) continue;
     out.push(n);
     if (out.length >= 8) break;
   }
@@ -235,7 +245,7 @@ async function enrich(bd) {
     base.studio = extractStudio(infobox);
     base.website = extractWebsite(infobox) || base.website;
     base.staff = staffFromInfobox(infobox);
-    base.tags = pickTags(subject.tags || []);
+    base.tags = pickTags(subject.tags || [], [base.studio]);
     const rawTags = Array.isArray(subject.tags) ? subject.tags.map((t) => t && t.name) : [];
     base.isR18 = rawTags.some((n) => R18_TAGS.has(n));
 
