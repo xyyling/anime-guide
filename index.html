@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>新番导览 · 每日更新</title>
+  <meta name="description" content="Netflix 风格动漫新番导览，展示未来 7 天每日放送，含简介、制作公司与 staff 详情。">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="navbar">
+    <div class="nav-inner">
+      <a class="brand" href="#">新番<span>导览</span></a>
+      <div class="nav-tools">
+        <input id="search" type="search" placeholder="搜索新番…" autocomplete="off">
+        <select id="typeFilter" aria-label="类型筛选">
+          <option value="">全部类型</option>
+        </select>
+        <select id="studioFilter" aria-label="制作公司筛选">
+          <option value="">全部制作公司</option>
+        </select>
+        <button id="favBtn" class="ghost-btn" type="button">我的追番 <span id="favCount">0</span></button>
+      </div>
+    </div>
+  </header>
+
+  <section id="hero" class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-content">
+      <p class="hero-kicker">今日更新 · <span id="heroDate"></span></p>
+      <h1 id="heroTitle">加载中…</h1>
+      <p id="heroMeta" class="hero-meta"></p>
+      <p id="heroSummary" class="hero-summary"></p>
+      <button id="heroMore" class="accent-btn" type="button" hidden>查看详情</button>
+    </div>
+  </section>
+
+  <main id="main" class="main"></main>
+
+  <div id="favorites" class="fav-panel" hidden>
+    <h3>我的追番</h3>
+    <div id="favList"></div>
+  </div>
+
+  <div id="modal" class="modal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card">
+      <button class="modal-close" data-close aria-label="关闭">✕</button>
+      <div class="modal-body"></div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    数据来源：<a href="https://bgm.tv" target="_blank" rel="noopener">Bangumi 番组计划</a> · 每日自动更新
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
