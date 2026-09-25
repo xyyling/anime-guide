@@ -257,7 +257,7 @@ async function enrich(bd) {
     if (cRes.status === 'fulfilled') base.cast = castFromCharacters(cRes.value);
     base.staff = dedupeStaff(base.staff);
 
-    const coverUrl = subject.images?.large || subject.images?.common;
+    const coverUrl = subject.images?.common || subject.images?.large || subject.images?.medium;
     base.cover = await downloadCover(coverUrl, id);
     return base;
   } catch (err) {

@@ -133,7 +133,7 @@
     const tags = item.tags || [];
     return '<button class="card" type="button" data-id="' + item.id + '">' +
       '<span class="card-poster">' +
-        '<img src="' + esc(coverOf(item)) + '" alt="' + esc(item.title) + '" loading="lazy" onerror="this.onerror=null;this.src=\'assets/placeholder.svg\'">' +
+        '<img src="' + esc(coverOf(item)) + '" alt="' + esc(item.title) + '" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=\'assets/placeholder.svg\'">' +
         (tags.length ? '<span class="card-tags">' + tags.map((t) => '<span class="card-tag-chip">' + esc(t) + '</span>').join('') + '</span>' : '') +
       '</span>' +
       '<span class="card-title">' + esc(item.title) + '</span>' +
@@ -163,7 +163,7 @@
     const fav = isFav(item.id);
     return '<div class="modal-hero" style="background-image:linear-gradient(180deg, rgba(0,0,0,.2), var(--panel)), url(\'' + esc(coverOf(item)) + '\')"></div>' +
       '<div class="modal-inner">' +
-        '<img class="modal-poster" src="' + esc(coverOf(item)) + '" alt="' + esc(item.title) + '" onerror="this.onerror=null;this.src=\'assets/placeholder.svg\'">' +
+        '<img class="modal-poster" src="' + esc(coverOf(item)) + '" alt="' + esc(item.title) + '" decoding="async" onerror="this.onerror=null;this.src=\'assets/placeholder.svg\'">' +
         '<div class="modal-info">' +
           '<h2>' + esc(item.title) + '</h2>' +
           (item.originalTitle && item.originalTitle !== item.title ? '<p class="modal-orig">' + esc(item.originalTitle) + '</p>' : '') +
@@ -198,7 +198,7 @@
     el.favList.innerHTML = favs.length
       ? favs.map((f) =>
           '<div class="fav-item" data-id="' + f.id + '">' +
-            '<img src="' + esc(coverOf(f)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/placeholder.svg\'">' +
+            '<img src="' + esc(coverOf(f)) + '" alt="" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=\'assets/placeholder.svg\'">' +
             '<span class="t">' + esc(f.title) + '</span>' +
             '<button class="rm" data-remove="' + f.id + '" title="取消追番">✕</button>' +
           '</div>').join('')
