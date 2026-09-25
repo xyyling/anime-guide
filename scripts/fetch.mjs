@@ -7,8 +7,15 @@ const ROOT = path.resolve(__dirname, '..');
 const SITE = path.join(ROOT, '_site');
 
 const BGM = 'https://api.bgm.tv';
-const USER_AGENT = 'anime-guide/1.0 (https://github.com/your-repo)';
+const BGM_DATA = 'https://unpkg.com/bangumi-data@0.3/dist/data.json';
+const USER_AGENT = 'anime-guide/1.0 (https://github.com/xyyling/anime-guide)';
 const CONCURRENCY = 3;
+
+// 2026 秋季新番：北京时间 2026-09-01 00:00 ~ 2027-01-01 00:00（即 UTC 范围）。
+const SEASON_LABEL = '2026 秋季';
+const SEASON_START = Date.parse('2026-08-31T16:00:00.000Z');
+const SEASON_END = Date.parse('2026-12-31T16:00:00.000Z');
+const BEIJING_OFFSET = 8 * 3600 * 1000;
 
 const WEEKDAY_LABELS = { 1: '周一', 2: '周二', 3: '周三', 4: '周四', 5: '周五', 6: '周六', 7: '周日' };
 
@@ -20,12 +27,6 @@ function normalizeUrl(url) {
   if (!url) return '';
   if (url.startsWith('//')) return 'https:' + url;
   return url;
-}
-
-function asList(resp) {
-  if (Array.isArray(resp)) return resp;
-  if (resp && Array.isArray(resp.data)) return resp.data;
-  return [];
 }
 
 async function bgmGet(url) {
@@ -48,6 +49,12 @@ async function bgmGet(url) {
     }
   }
   throw lastErr;
+}
+
+async function getJson(url) {
+  const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' } });
+  if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + url);
+  return res.json();
 }
 
 function cleanValue(v) {
@@ -101,7 +108,9 @@ function staffFromInfobox(infobox) {
 }
 
 function addStaffFromPersons(staff, resp) {
-  for (const p of asList(resp)) {
+  const data = Array.isArray(resp) ? resp : resp?.data;
+  if (!Array.isArray(data)) return;
+  for (const p of data) {
     if (!p || !p.name) continue;
     const role = p.relation || '制作';
     staff.push({ role, name: p.name });
@@ -109,8 +118,10 @@ function addStaffFromPersons(staff, resp) {
 }
 
 function castFromCharacters(resp) {
+  const data = Array.isArray(resp) ? resp : resp?.data;
   const cast = [];
-  for (const c of asList(resp)) {
+  if (!Array.isArray(data)) return cast;
+  for (const c of data) {
     const character = c.name || '';
     for (const a of (c.actors || [])) {
       if (a && a.name) cast.push({ character, actor: a.name });
@@ -129,6 +140,33 @@ function dedupeStaff(staff) {
   });
 }
 
+function getBangumiId(item) {
+  const site = (item.sites || []).find((s) => s && s.site === 'bangumi');
+  return site && site.id ? Number(site.id) : null;
+}
+
+function zhTitle(item) {
+  const t = item.titleTranslate || {};
+  const zh = t['zh-Hans'] || t['zh-Hant'] || [];
+  return (Array.isArray(zh) && zh[0]) || item.title || '';
+}
+
+function beijingParts(beginIso) {
+  const bj = new Date(Date.parse(beginIso) + BEIJING_OFFSET);
+  return {
+    weekday: bj.getUTCDay() === 0 ? 7 : bj.getUTCDay(),
+    date: bj.toISOString().slice(0, 10),
+  };
+}
+
+function mapPlatform(type) {
+  if (type === 'tv') return 'TV';
+  if (type === 'web') return 'WEB';
+  if (type === 'movie') return '剧场版';
+  if (type === 'ova') return 'OVA';
+  return type ? type.toUpperCase() : '';
+}
+
 async function downloadCover(url, id) {
   const full = normalizeUrl(url);
   if (!full) return '';
@@ -144,22 +182,22 @@ async function downloadCover(url, id) {
   }
 }
 
-async function enrich(cal) {
-  const id = cal.id;
+async function enrich(bd) {
+  const id = bd.bangumiId;
   const base = {
     id,
-    title: cal.name_cn || cal.name || '',
-    originalTitle: cal.name_cn ? cal.name : '',
+    title: bd.nameCn || bd.title,
+    originalTitle: bd.nameCn ? bd.title : '',
     cover: '',
-    summary: cal.summary || '',
-    rating: cal.rating?.score ?? null,
-    platform: '',
+    summary: '',
+    rating: null,
+    platform: bd.platform,
     studio: '',
-    airDate: cal.air_date || '',
-    weekday: cal.weekday,
+    airDate: bd.airDate,
+    weekday: bd.weekday,
     staff: [],
     cast: [],
-    website: '',
+    website: bd.website || '',
     bgmUrl: 'https://bgm.tv/subject/' + id,
   };
 
@@ -170,10 +208,10 @@ async function enrich(cal) {
     base.originalTitle = subject.name_cn ? subject.name : (subject.name || '');
     base.summary = subject.summary || base.summary;
     base.rating = subject.rating?.score ?? base.rating;
-    base.platform = subject.platform || '';
+    base.platform = subject.platform || base.platform;
     base.airDate = subject.date || base.airDate;
     base.studio = extractStudio(infobox);
-    base.website = extractWebsite(infobox);
+    base.website = extractWebsite(infobox) || base.website;
     base.staff = staffFromInfobox(infobox);
 
     const [pRes, cRes] = await Promise.allSettled([
@@ -184,13 +222,11 @@ async function enrich(cal) {
     if (cRes.status === 'fulfilled') base.cast = castFromCharacters(cRes.value);
     base.staff = dedupeStaff(base.staff);
 
-    const coverUrl =
-      subject.images?.large || subject.images?.common || cal.images?.large || cal.images?.common;
+    const coverUrl = subject.images?.large || subject.images?.common;
     base.cover = await downloadCover(coverUrl, id);
     return base;
   } catch (err) {
     console.warn('  subject ' + id + ' enrichment failed: ' + err.message);
-    base.cover = await downloadCover(cal.images?.large || cal.images?.common, id);
     return base;
   }
 }
@@ -224,23 +260,38 @@ async function assemble(data) {
 async function main() {
   await mkdir(path.join(SITE, 'assets', 'covers'), { recursive: true });
 
-  console.log('Fetching Bangumi calendar…');
-  const calendar = await bgmGet(BGM + '/calendar');
-  const groups = asList(calendar);
-  const flat = [];
-  for (const g of groups) {
-    const weekday = Number(g.weekday);
-    for (const item of (g.items || [])) flat.push({ ...item, weekday });
-  }
-  console.log('Found ' + flat.length + ' airing entries.');
+  console.log('Fetching bangumi-data season dataset…');
+  const dataset = await getJson(BGM_DATA);
+  const items = Array.isArray(dataset) ? dataset : (dataset.items || []);
 
-  const enriched = await mapWithConcurrency(flat, CONCURRENCY, enrich);
+  const seasonItems = [];
+  for (const item of items) {
+    const bangumiId = getBangumiId(item);
+    if (!bangumiId || !item.begin) continue;
+    const ts = Date.parse(item.begin);
+    if (!Number.isFinite(ts) || ts < SEASON_START || ts >= SEASON_END) continue;
+    const bj = beijingParts(item.begin);
+    seasonItems.push({
+      bangumiId,
+      nameCn: zhTitle(item),
+      title: item.title || '',
+      platform: mapPlatform(item.type),
+      airDate: bj.date,
+      weekday: bj.weekday,
+      website: item.officialSite || '',
+    });
+  }
+
+  console.log('Selected ' + seasonItems.length + ' entries for ' + SEASON_LABEL + '.');
+  if (!seasonItems.length) throw new Error('No season entries found in dataset.');
+
+  const enriched = await mapWithConcurrency(seasonItems, CONCURRENCY, enrich);
   const days = [];
   for (let w = 1; w <= 7; w++) {
     days.push({ weekday: w, label: WEEKDAY_LABELS[w], items: enriched.filter((e) => e.weekday === w) });
   }
 
-  const data = { generatedAt: new Date().toISOString(), days };
+  const data = { generatedAt: new Date().toISOString(), season: SEASON_LABEL, days };
   await assemble(data);
   console.log('Done. Site written to ' + SITE);
 }

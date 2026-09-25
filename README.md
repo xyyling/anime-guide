@@ -1,6 +1,6 @@
 # 新番导览（Netflix 风格）
 
-纯静态的动漫新番网页，展示未来 7 天每日放送的番剧，按周一到周日分组；点击封面弹出详情，查看简介、制作公司、完整 staff 与 cast。数据来自 [Bangumi](https://bgm.tv) 公开 API。
+纯静态的动漫新番网页，展示 2026 秋季（9–12 月开播）新番，按周一到周日分组；点击封面弹出详情，查看简介、制作公司、完整 staff 与 cast。数据来自 [bangumi-data](https://github.com/bangumi-data/bangumi-data) 季度数据集与 [Bangumi](https://bgm.tv) 公开 API。
 
 ## 本地预览
 
@@ -17,19 +17,19 @@ npx serve .              # 或 python -m http.server 8000
 
 ## 数据抓取
 
-`scripts/fetch.mjs` 会依次请求：
+`scripts/fetch.mjs` 会：
 
-- `GET /calendar`：未来 7 天放送时间表
+- 从 `unpkg.com/bangumi-data` 拉取季度数据集，筛选出 2026 秋季（北京时间 9–12 月开播）的番剧，并取其 Bangumi 条目 id
 - `GET /v0/subjects/{id}`：简介、infobox、封面
 - `GET /v0/subjects/{id}/persons`：完整制作人员
 - `GET /v0/subjects/{id}/characters`：主要角色与声优
 
-并将封面下载到 `_site/assets/covers/`，生成 `_site/data.json`。任一 API 请求失败会以非零状态退出，CI 保留上一次已部署版本。
+并将封面下载到 `_site/assets/covers/`，生成 `_site/data.json`。拉取季度数据集失败会以非零状态退出，CI 保留上一次已部署版本；单个条目的详情拉取失败则跳过详情、保留标题与占位封面。
 
 ## 部署
 
 1. 把仓库推送到 GitHub。
 2. 在仓库 Settings → Pages 中将 Source 设为 **GitHub Actions**。
-3. `.github/workflows/deploy.yml` 每天北京时间 06:00 自动构建部署，也支持手动触发（Actions → Deploy to GitHub Pages → Run workflow）。
+3. `.github/workflows/deploy.yml` 默认不设定时任务，改为手动触发（Actions → Deploy to GitHub Pages → Run workflow）；向 `main`/`master` 推送代码时也会触发一次。
 
 首次部署需要构建环境能访问 `api.bgm.tv` 与 `lain.bgm.tv`。
