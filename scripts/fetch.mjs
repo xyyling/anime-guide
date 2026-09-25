@@ -167,6 +167,25 @@ function mapPlatform(type) {
   return type ? type.toUpperCase() : '';
 }
 
+const META_TAGS = new Set([
+  '动画', '漫画改', '小说改', '游戏改', '原创', '轻小说改', '日本',
+  'TV', 'WEB', '剧场版', 'OVA', '动漫', '新番', '连载', '完结', '改编',
+  '动画制作', 'bilibili', '哔哩哔哩',
+]);
+const META_TAG_RE = /^(\d{4}年|\d{1,2}月|第.+季)$/;
+
+function pickTags(tags) {
+  const out = [];
+  for (const t of (Array.isArray(tags) ? tags : [])) {
+    if (!t || !t.name) continue;
+    const n = String(t.name).trim();
+    if (!n || META_TAGS.has(n) || META_TAG_RE.test(n)) continue;
+    out.push(n);
+    if (out.length >= 8) break;
+  }
+  return out;
+}
+
 async function downloadCover(url, id) {
   const full = normalizeUrl(url);
   if (!full) return '';
@@ -197,6 +216,7 @@ async function enrich(bd) {
     weekday: bd.weekday,
     staff: [],
     cast: [],
+    tags: [],
     website: bd.website || '',
     bgmUrl: 'https://bgm.tv/subject/' + id,
   };
@@ -213,6 +233,7 @@ async function enrich(bd) {
     base.studio = extractStudio(infobox);
     base.website = extractWebsite(infobox) || base.website;
     base.staff = staffFromInfobox(infobox);
+    base.tags = pickTags(subject.tags || []);
 
     const [pRes, cRes] = await Promise.allSettled([
       bgmGet(BGM + '/v0/subjects/' + id + '/persons?limit=50'),

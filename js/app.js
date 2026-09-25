@@ -10,7 +10,7 @@
     data: null,
     allItems: [],
     favorites: new Set(JSON.parse(localStorage.getItem('anime-guide:favorites') || '[]')),
-    filters: { q: '', type: '', studio: '' },
+    filters: { q: '', type: '', studio: '', tag: '' },
     today: 1,
   };
 
@@ -19,6 +19,7 @@
     search: $('#search'),
     typeFilter: $('#typeFilter'),
     studioFilter: $('#studioFilter'),
+    tagFilter: $('#tagFilter'),
     favBtn: $('#favBtn'),
     favCount: $('#favCount'),
     favPanel: $('#favorites'),
@@ -80,6 +81,7 @@
     if (q && !(item.title || '').toLowerCase().includes(q) && !(item.originalTitle || '').toLowerCase().includes(q)) return false;
     if (state.filters.type && item.platform !== state.filters.type) return false;
     if (state.filters.studio && item.studio !== state.filters.studio) return false;
+    if (state.filters.tag && !(item.tags || []).includes(state.filters.tag)) return false;
     return true;
   }
 
@@ -93,8 +95,10 @@
   function setupFilters() {
     const types = [...new Set(state.allItems.map((i) => i.platform).filter(Boolean))].sort();
     const studios = [...new Set(state.allItems.map((i) => i.studio).filter(Boolean))].sort();
+    const tags = [...new Set(state.allItems.flatMap((i) => i.tags || []).filter(Boolean))].sort();
     fillSelect(el.typeFilter, types, '全部类型');
     fillSelect(el.studioFilter, studios, '全部制作公司');
+    fillSelect(el.tagFilter, tags, '全部标签');
   }
 
   function renderHero() {
@@ -122,6 +126,7 @@
     return '<button class="card" type="button" data-id="' + item.id + '">' +
       '<img src="' + esc(coverOf(item)) + '" alt="' + esc(item.title) + '" loading="lazy" onerror="this.onerror=null;this.src=\'assets/placeholder.svg\'">' +
       '<span class="card-title">' + esc(item.title) + '</span>' +
+      (item.tags && item.tags[0] ? '<span class="card-tag">' + esc(item.tags[0]) + '</span>' : '') +
       '<span class="card-heart' + (isFav(item.id) ? ' active' : '') + '" data-id="' + item.id + '" title="追番">♥</span>' +
       '</button>';
   }
@@ -137,7 +142,7 @@
     el.main.innerHTML = rows.map(({ day, items }) =>
       '<section class="row">' +
         '<h2 class="row-title">' + esc(day.label) + ' <span class="row-count">' + items.length + ' 部</span></h2>' +
-        '<div class="row-scroll">' + items.map(cardHtml).join('') + '</div>' +
+        '<div class="row-grid">' + items.map(cardHtml).join('') + '</div>' +
       '</section>').join('');
   }
 
@@ -159,6 +164,7 @@
           '</div>' +
           '<h3>简介</h3><p class="modal-summary">' + esc(stripTags(item.summary || '暂无简介')) + '</p>' +
           (item.studio ? '<h3>制作公司</h3><div class="chip-row"><span class="chip">' + esc(item.studio) + '</span></div>' : '') +
+          (item.tags && item.tags.length ? '<h3>题材标签</h3><div class="chip-row">' + item.tags.map((t) => '<span class="chip">' + esc(t) + '</span>').join('') + '</div>' : '') +
           (staff.length ? '<h3>制作人员 Staff</h3><ul class="staff-list">' + staff.map((s) => '<li><span class="role">' + esc(s.role) + '</span>' + esc(s.name) + '</li>').join('') + '</ul>' : '') +
           (cast.length ? '<h3>主要角色与声优</h3><ul class="cast-list">' + cast.map((c) => '<li><span class="role">' + esc(c.character) + '</span>CV ' + esc(c.actor) + '</li>').join('') + '</ul>' : '') +
         '</div>' +
@@ -227,6 +233,7 @@
   el.search.addEventListener('input', (e) => { state.filters.q = e.target.value; renderRows(); renderHero(); });
   el.typeFilter.addEventListener('change', (e) => { state.filters.type = e.target.value; renderRows(); renderHero(); });
   el.studioFilter.addEventListener('change', (e) => { state.filters.studio = e.target.value; renderRows(); renderHero(); });
+  el.tagFilter.addEventListener('change', (e) => { state.filters.tag = e.target.value; renderRows(); renderHero(); });
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { closeModal(); el.favPanel.hidden = true; }
