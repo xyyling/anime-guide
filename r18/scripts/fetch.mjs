@@ -11,6 +11,8 @@ const ANILIST = 'https://graphql.anilist.co';
 const USER_AGENT = 'anime-guide-r18/1.0 (https://github.com/xyyling/anime-guide)';
 const CONCURRENCY = 8;
 const MAX_PAGES = 8;
+const DEEPSEEK = 'https://api.deepseek.com/chat/completions';
+const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY || '';
 
 const ROLE_MAP = {
   Director: '导演',
@@ -120,6 +122,48 @@ async function mapWithConcurrency(items, limit, fn) {
   return results;
 }
 
+async function deepseekChat(system, user) {
+  const res = await fetch(DEEPSEEK, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer ' + DEEPSEEK_KEY,
+      'User-Agent': USER_AGENT,
+    },
+    body: JSON.stringify({
+      model: 'deepseek-chat',
+      temperature: 0.2,
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: user },
+      ],
+    }),
+  });
+  if (!res.ok) throw new Error('DeepSeek HTTP ' + res.status);
+  const data = await res.json();
+  return data.choices && data.choices[0] && data.choices[0].message.content;
+}
+
+function parseJsonArray(s) {
+  const t = String(s || '').trim();
+  const m = t.match(/\[[\s\S]*\]/);
+  if (!m) return null;
+  try { return JSON.parse(m[0]); } catch { return null; }
+}
+
+async function translateBatch(texts, lang) {
+  const out = new Array(texts.length);
+  const size = lang === 'ja' ? 40 : 16;
+  const sys = '你是专业的日文/英文翻译。把用户给出的文本逐条翻译成简体中文。只输出一个 JSON 数组，数组元素是每条对应的中文译文，不要输出任何其他文字、解释或代码块标记。';
+  for (let i = 0; i < texts.length; i += size) {
+    const batch = texts.slice(i, i + size);
+    const content = await deepseekChat(sys, JSON.stringify(batch));
+    const arr = parseJsonArray(content);
+    for (let j = 0; j < batch.length; j++) out[i + j] = (arr && arr[j]) || batch[j];
+  }
+  return out;
+}
+
 async function downloadCover(url, id) {
   if (!url) return '';
   const dest = path.join(SITE, 'assets', 'covers', id + '.jpg');
@@ -139,7 +183,7 @@ function mapMedia(m) {
   const romaji = m.title && m.title.romaji;
   const english = m.title && m.title.english;
   const title = native || romaji || english || '';
-  const originalTitle = native ? (romaji || english || '') : '';
+  const originalTitle = native || '';
 
   const staff = ((m.staff && m.staff.edges) || [])
     .map((e) => ({
@@ -201,6 +245,21 @@ async function main() {
     if (!media.length) throw new Error('AniList 返回空结果');
 
     const items = media.map(mapMedia);
+    if (DEEPSEEK_KEY) {
+      console.log('Translating titles & summaries with DeepSeek…');
+      const titles = items.map((x) => x.title).filter(Boolean);
+      const summaries = items.filter((x) => x.summary).map((x) => x.summary);
+      const zhTitles = await translateBatch(titles, 'ja');
+      const zhSummaries = await translateBatch(summaries, 'en');
+      let ti = 0;
+      let si = 0;
+      for (const item of items) {
+        if (item.title) item.title = zhTitles[ti++] || item.title;
+        if (item.summary) item.summary = zhSummaries[si++] || item.summary;
+      }
+    } else {
+      console.warn('未配置 DEEPSEEK_API_KEY，跳过翻译（保留日文/英文原文）。');
+    }
     await mapWithConcurrency(items, CONCURRENCY, async (item, i) => {
       const m = media[i];
       item.cover = await downloadCover((m.coverImage && (m.coverImage.large || m.coverImage.medium)) || '', m.id);

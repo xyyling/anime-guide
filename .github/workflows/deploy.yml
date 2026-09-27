@@ -30,6 +30,8 @@ jobs:
         run: node scripts/fetch.mjs
 
       - name: Fetch R18 data
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: node r18/scripts/fetch.mjs
 
       - name: Configure Pages
