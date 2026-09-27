@@ -30,8 +30,6 @@ jobs:
         run: node scripts/fetch.mjs
 
       - name: Fetch R18 data
-        env:
-          BANGUMI_TOKEN: ${{ secrets.BANGUMI_TOKEN }}
         run: node r18/scripts/fetch.mjs
 
       - name: Configure Pages

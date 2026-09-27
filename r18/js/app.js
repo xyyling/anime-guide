@@ -108,7 +108,7 @@
       el.heroBg.style.backgroundImage = '';
       el.heroTitle.textContent = '暂无里番数据';
       el.heroMeta.textContent = '';
-      el.heroSummary.textContent = '请配置 BANGUMI_TOKEN 后运行抓取脚本获取数据。';
+      el.heroSummary.textContent = '暂无里番数据。';
       el.heroMore.hidden = true;
       return;
     }
@@ -171,7 +171,7 @@
           '<p class="modal-meta">' + esc(metaLine(item)) + '</p>' +
           '<div class="actions">' +
             '<button class="accent-btn" id="modalHeart" data-id="' + item.id + '" type="button">' + (fav ? '♥ 已追番' : '♡ 追番收藏') + '</button>' +
-            '<a class="outlink" href="' + esc(item.bgmUrl) + '" target="_blank" rel="noopener">在 Bangumi 查看 ↗</a>' +
+            '<a class="outlink" href="' + esc(item.bgmUrl) + '" target="_blank" rel="noopener">在 AniList 查看 ↗</a>' +
             (item.website ? '<a class="outlink" href="' + esc(item.website) + '" target="_blank" rel="noopener">官方网站 ↗</a>' : '') +
           '</div>' +
           '<h3>简介</h3><p class="modal-summary">' + esc(stripTags(item.summary || '暂无简介')) + '</p>' +

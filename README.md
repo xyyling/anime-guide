@@ -38,10 +38,4 @@ npx serve .              # 或 python -m http.server 8000
 
 `r18/` 目录是一个独立的里番（成人动画）站点，与主站风格一致，但按发售年份分组展示。部署后的访问路径为 `<站点>/r18/`。
 
-里番属于 Bangumi 的 NSFW 内容，匿名 API 拿不到，需要配置 Access Token：
-
-1. 注册并登录 [bangumi.tv](https://bgm.tv)。
-2. 打开 [https://next.bgm.tv/demo/access-token](https://next.bgm.tv/demo/access-token) 生成一个 Access Token。
-3. 在 GitHub 仓库 **Settings → Secrets and variables → Actions → New repository secret** 新建 secret，名字填 `BANGUMI_TOKEN`，值为刚才的 token。
-
-`r18/scripts/fetch.mjs` 会调用 Bangumi 搜索接口，用 `filter.nsfw = true` 拉取里番，按发售日期倒序生成 `_site/r18/`。未配置 token 时会回退到种子数据（空列表），不影响主站。
+数据来自 [AniList](https://anilist.co) 公开 GraphQL API（`isAdult: true`），无需 token。标题为日文，简介为英文。`r18/scripts/fetch.mjs` 会拉取里番、下载封面并按发售日期倒序生成 `_site/r18/`。抓取失败时会回退到种子数据（空列表），不影响主站。
