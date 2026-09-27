@@ -10,7 +10,7 @@ const SITE = path.join(ROOT, '_site', 'r18');
 const ANILIST = 'https://graphql.anilist.co';
 const USER_AGENT = 'anime-guide-r18/1.0 (https://github.com/xyyling/anime-guide)';
 const CONCURRENCY = 8;
-const MAX_PAGES = 8;
+const MAX_PAGES = 20;
 const DEEPSEEK = 'https://api.deepseek.com/chat/completions';
 const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY || '';
 
@@ -89,7 +89,7 @@ query($page:Int,$perPage:Int){
       studios(isMain:true){nodes{name}}
       staff(perPage:12){edges{role node{name{full}}}}
       characters(perPage:8){edges{role node{name{full}} voiceActors(language:JAPANESE,sort:RELEVANCE){name{full}}}}
-      tags{name}
+      tags{name rank}
       siteUrl
       isAdult
     }
@@ -214,7 +214,11 @@ function mapMedia(m) {
     airDate: buildDate(m.startDate),
     staff,
     cast,
-    tags: (m.tags || []).map((t) => t.name).filter(Boolean).slice(0, 8),
+    tags: (m.tags || [])
+      .filter((t) => t && t.name)
+      .sort((a, b) => (b.rank || 0) - (a.rank || 0))
+      .map((t) => t.name)
+      .slice(0, 8),
     website: m.siteUrl || '',
     bgmUrl: m.siteUrl || '',
     isAdult: !!m.isAdult,
@@ -244,28 +248,43 @@ async function main() {
     console.log('Found ' + media.length + ' adult titles.');
     if (!media.length) throw new Error('AniList 返回空结果');
 
-    const items = media.map(mapMedia);
+    const items = media.map((m) => {
+      const item = mapMedia(m);
+      item._cover = (m.coverImage && (m.coverImage.large || m.coverImage.medium)) || '';
+      return item;
+    });
+
+    const before = items.length;
+    const filtered = items.filter((x) => x.airDate && Number(x.airDate.slice(0, 4)) >= 2010);
+    console.log('Kept ' + filtered.length + ' titles from 2010 onward (was ' + before + ').');
+
     if (DEEPSEEK_KEY) {
-      console.log('Translating titles & summaries with DeepSeek…');
-      const titles = items.map((x) => x.title).filter(Boolean);
-      const summaries = items.filter((x) => x.summary).map((x) => x.summary);
+      console.log('Translating titles, summaries & tags with DeepSeek…');
+      const titles = filtered.map((x) => x.title).filter(Boolean);
+      const summaries = filtered.filter((x) => x.summary).map((x) => x.summary);
+      const tags = [...new Set(filtered.flatMap((x) => x.tags || []).filter(Boolean))];
       const zhTitles = await translateBatch(titles, 'ja');
       const zhSummaries = await translateBatch(summaries, 'en');
+      const zhTags = await translateBatch(tags, 'en');
+      const tagMap = {};
+      tags.forEach((t, i) => { tagMap[t] = zhTags[i] || t; });
       let ti = 0;
       let si = 0;
-      for (const item of items) {
+      for (const item of filtered) {
         if (item.title) item.title = zhTitles[ti++] || item.title;
         if (item.summary) item.summary = zhSummaries[si++] || item.summary;
+        item.tags = (item.tags || []).map((t) => tagMap[t] || t);
       }
     } else {
       console.warn('未配置 DEEPSEEK_API_KEY，跳过翻译（保留日文/英文原文）。');
     }
-    await mapWithConcurrency(items, CONCURRENCY, async (item, i) => {
-      const m = media[i];
-      item.cover = await downloadCover((m.coverImage && (m.coverImage.large || m.coverImage.medium)) || '', m.id);
+
+    await mapWithConcurrency(filtered, CONCURRENCY, async (item) => {
+      item.cover = await downloadCover(item._cover, item.id);
+      delete item._cover;
     });
-    items.sort((a, b) => (b.airDate || '').localeCompare(a.airDate || ''));
-    data = { generatedAt: new Date().toISOString(), season: '里番', items };
+    filtered.sort((a, b) => (b.airDate || '').localeCompare(a.airDate || ''));
+    data = { generatedAt: new Date().toISOString(), season: '里番', items: filtered };
   } catch (err) {
     console.warn('抓取 AniList 失败：' + err.message + '，回退到种子数据。');
     data = JSON.parse(await readFile(path.join(R18_ROOT, 'data.json'), 'utf8'));
