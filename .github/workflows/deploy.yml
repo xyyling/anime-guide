@@ -26,8 +26,13 @@ jobs:
         with:
           node-version: 20
 
-      - name: Fetch Bangumi data
+      - name: Fetch fall anime data
         run: node scripts/fetch.mjs
+
+      - name: Fetch R18 data
+        env:
+          BANGUMI_TOKEN: ${{ secrets.BANGUMI_TOKEN }}
+        run: node r18/scripts/fetch.mjs
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

@@ -33,3 +33,15 @@ npx serve .              # 或 python -m http.server 8000
 3. `.github/workflows/deploy.yml` 默认不设定时任务，改为手动触发（Actions → Deploy to GitHub Pages → Run workflow）；向 `main`/`master` 推送代码时也会触发一次。
 
 首次部署需要构建环境能访问 `api.bgm.tv` 与 `lain.bgm.tv`。
+
+## 里番站（按年份展示）
+
+`r18/` 目录是一个独立的里番（成人动画）站点，与主站风格一致，但按发售年份分组展示。部署后的访问路径为 `<站点>/r18/`。
+
+里番属于 Bangumi 的 NSFW 内容，匿名 API 拿不到，需要配置 Access Token：
+
+1. 注册并登录 [bangumi.tv](https://bgm.tv)。
+2. 打开 [https://next.bgm.tv/demo/access-token](https://next.bgm.tv/demo/access-token) 生成一个 Access Token。
+3. 在 GitHub 仓库 **Settings → Secrets and variables → Actions → New repository secret** 新建 secret，名字填 `BANGUMI_TOKEN`，值为刚才的 token。
+
+`r18/scripts/fetch.mjs` 会调用 Bangumi 搜索接口，用 `filter.nsfw = true` 拉取里番，按发售日期倒序生成 `_site/r18/`。未配置 token 时会回退到种子数据（空列表），不影响主站。
