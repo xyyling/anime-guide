@@ -11,6 +11,7 @@
     allItems: [],
     favorites: new Set(JSON.parse(localStorage.getItem('anime-guide-r18:favorites') || '[]')),
     filters: { q: '', type: '', studio: '', tag: '' },
+    sort: 'default',
   };
 
   const $ = (sel) => document.querySelector(sel);
@@ -19,6 +20,7 @@
     typeFilter: $('#typeFilter'),
     studioFilter: $('#studioFilter'),
     tagFilter: $('#tagFilter'),
+    sortFilter: $('#sortFilter'),
     themeBtn: $('#themeBtn'),
     favBtn: $('#favBtn'),
     favCount: $('#favCount'),
@@ -140,6 +142,21 @@
       el.main.innerHTML = '<div class="empty">没有符合条件的番剧。</div>';
       return;
     }
+    if (state.sort !== 'default') {
+      const sorted = items.slice().sort((a, b) => {
+        const an = a.rating == null;
+        const bn = b.rating == null;
+        if (an && bn) return 0;
+        if (an) return 1;
+        if (bn) return -1;
+        return state.sort === 'rating_desc' ? b.rating - a.rating : a.rating - b.rating;
+      });
+      el.main.innerHTML = '<section class="row">' +
+        '<h2 class="row-title">按评分排序 <span class="row-count">' + sorted.length + ' 部</span></h2>' +
+        '<div class="row-grid">' + sorted.map(cardHtml).join('') + '</div>' +
+        '</section>';
+      return;
+    }
     const byYear = new Map();
     for (const it of items) {
       const year = (it.airDate || '').slice(0, 4) || '未知';
@@ -249,6 +266,7 @@
   el.typeFilter.addEventListener('change', (e) => { state.filters.type = e.target.value; renderRows(); renderHero(); });
   el.studioFilter.addEventListener('change', (e) => { state.filters.studio = e.target.value; renderRows(); renderHero(); });
   el.tagFilter.addEventListener('change', (e) => { state.filters.tag = e.target.value; renderRows(); renderHero(); });
+  el.sortFilter.addEventListener('change', (e) => { state.sort = e.target.value; renderRows(); });
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { closeModal(); el.favPanel.hidden = true; }
