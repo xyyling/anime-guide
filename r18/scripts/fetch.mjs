@@ -123,25 +123,40 @@ async function mapWithConcurrency(items, limit, fn) {
 }
 
 async function deepseekChat(system, user) {
-  const res = await fetch(DEEPSEEK, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: 'Bearer ' + DEEPSEEK_KEY,
-      'User-Agent': USER_AGENT,
-    },
-    body: JSON.stringify({
-      model: 'deepseek-chat',
-      temperature: 0.2,
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: user },
-      ],
-    }),
-  });
-  if (!res.ok) throw new Error('DeepSeek HTTP ' + res.status);
-  const data = await res.json();
-  return data.choices && data.choices[0] && data.choices[0].message.content;
+  let lastErr;
+  for (let i = 0; i < 3; i++) {
+    try {
+      const res = await fetch(DEEPSEEK, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + DEEPSEEK_KEY,
+          'User-Agent': USER_AGENT,
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          temperature: 0.2,
+          messages: [
+            { role: 'system', content: system },
+            { role: 'user', content: user },
+          ],
+        }),
+        signal: AbortSignal.timeout(30000),
+      });
+      if (res.status === 429 || res.status >= 500) {
+        lastErr = new Error('DeepSeek HTTP ' + res.status);
+        await sleep(2000 * (i + 1));
+        continue;
+      }
+      if (!res.ok) throw new Error('DeepSeek HTTP ' + res.status);
+      const data = await res.json();
+      return data.choices && data.choices[0] && data.choices[0].message.content;
+    } catch (err) {
+      lastErr = err;
+      if (i < 2) await sleep(1500 * (i + 1));
+    }
+  }
+  throw lastErr;
 }
 
 function parseJsonArray(s) {
@@ -157,9 +172,13 @@ async function translateBatch(texts, lang) {
   const sys = '你是专业的日文/英文翻译。把用户给出的文本逐条翻译成简体中文。只输出一个 JSON 数组，数组元素是每条对应的中文译文，不要输出任何其他文字、解释或代码块标记。';
   for (let i = 0; i < texts.length; i += size) {
     const batch = texts.slice(i, i + size);
-    const content = await deepseekChat(sys, JSON.stringify(batch));
-    const arr = parseJsonArray(content);
-    for (let j = 0; j < batch.length; j++) out[i + j] = (arr && arr[j]) || batch[j];
+    try {
+      const content = await deepseekChat(sys, JSON.stringify(batch));
+      const arr = parseJsonArray(content);
+      for (let j = 0; j < batch.length; j++) out[i + j] = (arr && arr[j]) || batch[j];
+    } catch {
+      for (let j = 0; j < batch.length; j++) out[i + j] = batch[j];
+    }
   }
   return out;
 }
