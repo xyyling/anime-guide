@@ -1,4 +1,4 @@
-import { mkdir, writeFile, copyFile, readFile } from 'node:fs/promises';
+import { mkdir, writeFile, copyFile, readFile, access } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -6,6 +6,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..', '..');
 const R18_ROOT = path.resolve(__dirname, '..');
 const SITE = path.join(ROOT, '_site', 'r18');
+const MANUAL_COVERS = path.join(R18_ROOT, 'covers');
+const LOCAL_COVER_EXTS = ['.jpg', '.jpeg', '.png', '.webp'];
 
 const ANILIST = 'https://graphql.anilist.co';
 const USER_AGENT = 'anime-guide-r18/1.0 (https://github.com/xyyling/anime-guide)';
@@ -187,6 +189,14 @@ async function translateBatch(texts, lang) {
 }
 
 async function downloadCover(url, id) {
+  for (const ext of LOCAL_COVER_EXTS) {
+    const src = path.join(MANUAL_COVERS, id + ext);
+    try {
+      await access(src);
+      await copyFile(src, path.join(SITE, 'assets', 'covers', id + ext));
+      return 'assets/covers/' + id + ext;
+    } catch { /* 没有本地封面，继续走远程 */ }
+  }
   if (!url) return '';
   const dest = path.join(SITE, 'assets', 'covers', id + '.jpg');
   try {
@@ -225,7 +235,7 @@ function mapMedia(m) {
   const studioEdges = (m.studios && m.studios.edges) || [];
   const mainStudios = studioEdges.filter((e) => e.isMain).map((e) => e.node && e.node.name).filter(Boolean);
   const allStudios = studioEdges.map((e) => e.node && e.node.name).filter(Boolean);
-  const studios = mainStudios.length ? mainStudios : allStudios;
+  const studios = (mainStudios.length ? mainStudios : allStudios).filter((v, i, a) => a.indexOf(v) === i);
 
   return {
     id: m.id,
@@ -237,6 +247,7 @@ function mapMedia(m) {
     platform: m.format || '',
     episodes: m.episodes != null ? m.episodes : 1,
     studio: studios.join(' / '),
+    studios,
     airDate: buildDate(m.startDate),
     staff,
     cast,
@@ -261,7 +272,13 @@ async function assemble(data) {
   await mkdir(path.join(SITE, 'assets', 'covers'), { recursive: true });
 
   await writeFile(path.join(SITE, 'data.json'), JSON.stringify(data, null, 2));
-  await copyFile(path.join(R18_ROOT, 'index.html'), path.join(SITE, 'index.html'));
+  const tpl = await readFile(path.join(R18_ROOT, 'index.html'), 'utf8');
+  const inline = JSON.stringify(data).replace(/</g, '\\u003c');
+  const html = tpl.replace(
+    '<script src="js/app.js"></script>',
+    '<script id="app-data" type="application/json">' + inline + '</script>\n  <script src="js/app.js"></script>'
+  );
+  await writeFile(path.join(SITE, 'index.html'), html);
   await copyFile(path.join(R18_ROOT, 'js', 'app.js'), path.join(SITE, 'js', 'app.js'));
   await copyFile(path.join(ROOT, 'css', 'style.css'), path.join(SITE, 'css', 'style.css'));
   await copyFile(path.join(ROOT, 'assets', 'placeholder.svg'), path.join(SITE, 'assets', 'placeholder.svg'));

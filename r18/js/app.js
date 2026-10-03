@@ -6,10 +6,15 @@
   }[c]));
   const stripTags = (s) => String(s ?? '').replace(/<[^>]*>/g, '');
 
+  const store = {
+    get(k) { try { return localStorage.getItem(k) || ''; } catch { return ''; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch { /* file:// 下可能被禁用 */ } },
+  };
+
   const state = {
     data: null,
     allItems: [],
-    favorites: new Set(JSON.parse(localStorage.getItem('anime-guide-r18:favorites') || '[]')),
+    favorites: new Set(JSON.parse(store.get('anime-guide-r18:favorites') || '[]')),
     filters: { q: '', type: '', studio: '', tag: '' },
     sort: 'default',
   };
@@ -43,14 +48,14 @@
   function isFav(id) { return state.favorites.has(id); }
 
   function persistFavorites() {
-    localStorage.setItem('anime-guide-r18:favorites', JSON.stringify([...state.favorites]));
+    store.set('anime-guide-r18:favorites', JSON.stringify([...state.favorites]));
     el.favCount.textContent = state.favorites.size;
   }
 
   function applyTheme(light) {
     document.body.classList.toggle('light', light);
     el.themeBtn.textContent = light ? '🌙' : '☀️';
-    localStorage.setItem('anime-guide-r18:theme', light ? 'light' : 'dark');
+    store.set('anime-guide-r18:theme', light ? 'light' : 'dark');
   }
 
   function toggleFav(id) {
@@ -83,7 +88,7 @@
     const q = state.filters.q.trim().toLowerCase();
     if (q && !(item.title || '').toLowerCase().includes(q) && !(item.originalTitle || '').toLowerCase().includes(q)) return false;
     if (state.filters.type && item.platform !== state.filters.type) return false;
-    if (state.filters.studio && item.studio !== state.filters.studio) return false;
+    if (state.filters.studio && !(item.studios || (item.studio ? [item.studio] : [])).includes(state.filters.studio)) return false;
     if (state.filters.tag && !(item.tags || []).includes(state.filters.tag)) return false;
     return true;
   }
@@ -101,7 +106,15 @@
 
   function setupFilters() {
     const types = [...new Set(state.allItems.map((i) => i.platform).filter(Boolean))].sort();
-    const studios = [...new Set(state.allItems.map((i) => i.studio).filter(Boolean))].sort();
+    const studioCount = new Map();
+    for (const item of state.allItems) {
+      for (const s of (item.studios || (item.studio ? [item.studio] : []))) {
+        if (s) studioCount.set(s, (studioCount.get(s) || 0) + 1);
+      }
+    }
+    const studioOptions = [...studioCount.keys()]
+      .sort((a, b) => (studioCount.get(b) - studioCount.get(a)) || a.localeCompare(b))
+      .map((s) => ({ value: s, label: s + ' (' + studioCount.get(s) + ')' }));
     const tagCount = new Map();
     for (const item of state.allItems) {
       for (const t of (item.tags || [])) {
@@ -113,7 +126,7 @@
       .sort((a, b) => (tagCount.get(b) - tagCount.get(a)) || a.localeCompare(b))
       .map((t) => ({ value: t, label: t + ' (' + tagCount.get(t) + ')' }));
     fillSelect(el.typeFilter, types, '全部类型');
-    fillSelect(el.studioFilter, studios, '全部制作公司');
+    fillSelect(el.studioFilter, studioOptions, '全部制作公司');
     fillSelect(el.tagFilter, tagOptions, '全部标签');
   }
 
@@ -193,6 +206,7 @@
   function modalHtml(item) {
     const staff = item.staff || [];
     const cast = item.cast || [];
+    const studios = (item.studios && item.studios.length) ? item.studios : (item.studio ? [item.studio] : []);
     const fav = isFav(item.id);
     const qTitle = (item.originalTitle || item.title || '').trim();
     const qRaw = encodeURIComponent(qTitle);
@@ -220,7 +234,7 @@
           '</div>' +
           '<h3>预告片</h3>' + trailer + trailerLinks +
           '<h3>简介</h3><p class="modal-summary">' + esc(stripTags(item.summary || '暂无简介')) + '</p>' +
-          (item.studio ? '<h3>制作公司</h3><div class="chip-row"><span class="chip">' + esc(item.studio) + '</span></div>' : '') +
+          (studios.length ? '<h3>制作公司</h3><div class="chip-row">' + studios.map((s) => '<span class="chip">' + esc(s) + '</span>').join('') + '</div>' : '') +
           (item.tags && item.tags.length ? '<h3>题材标签</h3><div class="chip-row">' + item.tags.map((t) => '<span class="chip">' + esc(t) + '</span>').join('') + '</div>' : '') +
           (staff.length ? '<h3>制作人员 Staff</h3><ul class="staff-list">' + staff.map((s) => '<li><span class="role">' + esc(s.role) + '</span>' + esc(s.name) + '</li>').join('') + '</ul>' : '') +
           (cast.length ? '<h3>主要角色与声优</h3><ul class="cast-list">' + cast.map((c) => '<li><span class="role">' + esc(c.character) + '</span>CV ' + esc(c.actor) + '</li>').join('') + '</ul>' : '') +
@@ -311,11 +325,16 @@
   });
 
   async function init() {
-    applyTheme(localStorage.getItem('anime-guide-r18:theme') === 'light');
+    applyTheme(store.get('anime-guide-r18:theme') === 'light');
+    const inline = document.getElementById('app-data');
     try {
-      const res = await fetch('data.json');
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      state.data = await res.json();
+      if (inline && inline.textContent.trim()) {
+        state.data = JSON.parse(inline.textContent);
+      } else {
+        const res = await fetch('data.json');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        state.data = await res.json();
+      }
     } catch (err) {
       el.heroTitle.textContent = '数据加载失败';
       el.heroSummary.textContent = '请使用本地静态服务器（如 npx serve）预览，并确认 data.json 存在。';
