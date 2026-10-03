@@ -11,6 +11,7 @@ const ANILIST = 'https://graphql.anilist.co';
 const USER_AGENT = 'anime-guide-r18/1.0 (https://github.com/xyyling/anime-guide)';
 const CONCURRENCY = 8;
 const MAX_PAGES = 20;
+const EXCLUDE_FORMATS = new Set(['MOVIE', 'MUSIC', 'SPECIAL', 'TV', 'TV_SHORT']);
 const DEEPSEEK = 'https://api.deepseek.com/chat/completions';
 const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY || '';
 
@@ -87,7 +88,7 @@ query($page:Int,$perPage:Int){
       format
       episodes
       startDate{year month day}
-      studios(isMain:true){nodes{name}}
+      studios{edges{isMain node{name}}}
       staff(perPage:12){edges{role node{name{full}}}}
       characters(perPage:8){edges{role node{name{full}} voiceActors(language:JAPANESE,sort:RELEVANCE){name{full}}}}
       tags{name rank}
@@ -221,7 +222,10 @@ function mapMedia(m) {
     })
     .filter((c) => c.character);
 
-  const studios = ((m.studios && m.studios.nodes) || []).map((s) => s.name).filter(Boolean);
+  const studioEdges = (m.studios && m.studios.edges) || [];
+  const mainStudios = studioEdges.filter((e) => e.isMain).map((e) => e.node && e.node.name).filter(Boolean);
+  const allStudios = studioEdges.map((e) => e.node && e.node.name).filter(Boolean);
+  const studios = mainStudios.length ? mainStudios : allStudios;
 
   return {
     id: m.id,
@@ -280,8 +284,10 @@ async function main() {
     });
 
     const before = items.length;
-    const filtered = items.filter((x) => x.airDate && Number(x.airDate.slice(0, 4)) >= 2010);
-    console.log('Kept ' + filtered.length + ' titles from 2010 onward (was ' + before + ').');
+    const filtered = items.filter((x) => x.airDate
+      && Number(x.airDate.slice(0, 4)) >= 2010
+      && !EXCLUDE_FORMATS.has(x.platform));
+    console.log('Kept ' + filtered.length + ' OVA/ONA titles from 2010 onward (was ' + before + ').');
 
     if (DEEPSEEK_KEY) {
       console.log('Translating titles, summaries & tags with DeepSeek…');

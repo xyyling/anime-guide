@@ -109,6 +109,7 @@
       }
     }
     const tagOptions = [...tagCount.keys()]
+      .filter((t) => tagCount.get(t) >= 3)
       .sort((a, b) => (tagCount.get(b) - tagCount.get(a)) || a.localeCompare(b))
       .map((t) => ({ value: t, label: t + ' (' + tagCount.get(t) + ')' }));
     fillSelect(el.typeFilter, types, '全部类型');
