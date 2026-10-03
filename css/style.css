@@ -209,6 +209,17 @@ select {
   font-size: 11px;
   white-space: nowrap;
 }
+.card-eps {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(0,0,0,.62);
+  color: #fff;
+  border-radius: 10px;
+  padding: 2px 8px;
+  font-size: 11px;
+  pointer-events: none;
+}
 .card-heart {
   position: absolute;
   top: 8px;
@@ -303,6 +314,43 @@ select {
 .outlink:hover { border-color: var(--text); }
 .modal-info h3 { font-size: 16px; margin: 18px 0 8px; color: var(--text); }
 .modal-summary { color: var(--summary); line-height: 1.7; white-space: pre-line; margin: 0; }
+.trailer {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.trailer-thumb { width: 100%; height: 100%; object-fit: cover; opacity: .72; }
+.trailer-play {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 168px;
+  height: 44px;
+  border: 0;
+  border-radius: 22px;
+  background: rgba(0,0,0,.72);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+}
+.trailer-play:hover { background: var(--accent); }
+.trailer-frame { display: block; width: 100%; height: 100%; border: 0; }
+.trailer-empty { color: var(--muted); font-size: 14px; margin: 0; }
+.trailer-empty a { color: var(--text); }
+.trailer-links { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+.trailer-links a {
+  background: var(--chip);
+  border-radius: 14px;
+  padding: 4px 12px;
+  text-decoration: none;
+  color: var(--text);
+}
+.trailer-links a:hover { background: var(--accent); color: #fff; }
 .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { background: var(--chip); border-radius: 16px; padding: 5px 12px; font-size: 13px; }
 .staff-list, .cast-list {

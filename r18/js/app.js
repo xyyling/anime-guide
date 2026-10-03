@@ -73,6 +73,7 @@
     const parts = [];
     if (item.rating != null) parts.push('★ ' + Number(item.rating).toFixed(1));
     if (item.platform) parts.push(item.platform);
+    if (item.episodes != null) parts.push('全 ' + item.episodes + ' 集');
     if (item.airDate) parts.push(item.airDate);
     if (item.studio) parts.push(item.studio);
     return parts.join(' · ');
@@ -128,6 +129,7 @@
     return '<button class="card" type="button" data-id="' + item.id + '">' +
       '<span class="card-poster">' +
         '<img src="' + esc(coverOf(item)) + '" alt="' + esc(item.title) + '" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=\'assets/placeholder.svg\'">' +
+        (item.episodes != null ? '<span class="card-eps">全 ' + item.episodes + ' 集</span>' : '') +
         (tags.length ? '<span class="card-tags">' + tags.map((t) => '<span class="card-tag-chip">' + esc(t) + '</span>').join('') + '</span>' : '') +
       '</span>' +
       '<span class="card-title">' + esc(item.title) + '</span>' +
@@ -179,6 +181,19 @@
     const staff = item.staff || [];
     const cast = item.cast || [];
     const fav = isFav(item.id);
+    const qTitle = (item.originalTitle || item.title || '').trim();
+    const qRaw = encodeURIComponent(qTitle);
+    const trailer = item.trailer && item.trailer.id
+      ? '<div class="trailer" data-site="' + esc(item.trailer.site || 'youtube') + '" data-id="' + esc(item.trailer.id) + '">' +
+          (item.trailer.thumbnail ? '<img class="trailer-thumb" src="' + esc(item.trailer.thumbnail) + '" alt="预告片" loading="lazy" onerror="this.style.display=\'none\'">' : '') +
+          '<button class="trailer-play" type="button">▶ 播放预告片</button>' +
+        '</div>'
+      : '<p class="trailer-empty">暂无内嵌预告片</p>';
+    const trailerLinks = '<p class="trailer-links">站外找样本视频：' +
+      '<a href="https://www.dmm.co.jp/search/=/searchstr/' + qRaw + '/" target="_blank" rel="noopener">DMM</a>' +
+      '<a href="https://www.dlsite.com/maniax/fsr/=/language/jp/keyword/' + qRaw + '/" target="_blank" rel="noopener">DLsite</a>' +
+      '<a href="https://www.youtube.com/results?search_query=' + qRaw + '%20PV" target="_blank" rel="noopener">YouTube</a>' +
+      '</p>';
     return '<div class="modal-hero" style="background-image:linear-gradient(180deg, rgba(0,0,0,.2), var(--panel)), url(\'' + esc(coverOf(item)) + '\')"></div>' +
       '<div class="modal-inner">' +
         '<img class="modal-poster" src="' + esc(coverOf(item)) + '" alt="' + esc(item.title) + '" decoding="async" onerror="this.onerror=null;this.src=\'assets/placeholder.svg\'">' +
@@ -191,6 +206,7 @@
             '<a class="outlink" href="' + esc(item.bgmUrl) + '" target="_blank" rel="noopener">在 AniList 查看 ↗</a>' +
             (item.website ? '<a class="outlink" href="' + esc(item.website) + '" target="_blank" rel="noopener">官方网站 ↗</a>' : '') +
           '</div>' +
+          '<h3>预告片</h3>' + trailer + trailerLinks +
           '<h3>简介</h3><p class="modal-summary">' + esc(stripTags(item.summary || '暂无简介')) + '</p>' +
           (item.studio ? '<h3>制作公司</h3><div class="chip-row"><span class="chip">' + esc(item.studio) + '</span></div>' : '') +
           (item.tags && item.tags.length ? '<h3>题材标签</h3><div class="chip-row">' + item.tags.map((t) => '<span class="chip">' + esc(t) + '</span>').join('') + '</div>' : '') +
@@ -245,7 +261,17 @@
   el.modal.addEventListener('click', (e) => {
     if (e.target.closest('[data-close]')) { closeModal(); return; }
     const heart = e.target.closest('#modalHeart');
-    if (heart) toggleFav(Number(heart.dataset.id));
+    if (heart) { toggleFav(Number(heart.dataset.id)); return; }
+    const play = e.target.closest('.trailer-play');
+    if (play) {
+      const box = play.closest('.trailer');
+      const site = box.getAttribute('data-site');
+      const id = box.getAttribute('data-id');
+      const src = site === 'dailymotion'
+        ? 'https://www.dailymotion.com/embed/video/' + id
+        : 'https://www.youtube.com/embed/' + id;
+      box.innerHTML = '<iframe class="trailer-frame" src="' + src + '?autoplay=1" title="预告片" loading="lazy" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>';
+    }
   });
 
   el.favPanel.addEventListener('click', (e) => {

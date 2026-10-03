@@ -85,11 +85,13 @@ query($page:Int,$perPage:Int){
       description
       averageScore
       format
+      episodes
       startDate{year month day}
       studios(isMain:true){nodes{name}}
       staff(perPage:12){edges{role node{name{full}}}}
       characters(perPage:8){edges{role node{name{full}} voiceActors(language:JAPANESE,sort:RELEVANCE){name{full}}}}
       tags{name rank}
+      trailer{id site thumbnail}
       siteUrl
       isAdult
     }
@@ -229,6 +231,7 @@ function mapMedia(m) {
     summary: stripHtml(m.description || ''),
     rating: m.averageScore != null ? Number((m.averageScore / 10).toFixed(1)) : null,
     platform: m.format || '',
+    episodes: m.episodes != null ? m.episodes : 1,
     studio: studios.join(' / '),
     airDate: buildDate(m.startDate),
     staff,
@@ -238,6 +241,9 @@ function mapMedia(m) {
       .sort((a, b) => (b.rank || 0) - (a.rank || 0))
       .map((t) => t.name)
       .slice(0, 8),
+    trailer: m.trailer && m.trailer.id
+      ? { id: m.trailer.id, site: m.trailer.site || 'youtube', thumbnail: m.trailer.thumbnail || '' }
+      : null,
     website: m.siteUrl || '',
     bgmUrl: m.siteUrl || '',
     isAdult: !!m.isAdult,
