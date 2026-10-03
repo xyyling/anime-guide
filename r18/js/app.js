@@ -90,18 +90,30 @@
 
   function fillSelect(sel, values, placeholder) {
     const cur = sel.value;
-    sel.innerHTML = '<option value="">' + placeholder + '</option>' +
-      values.map((v) => '<option value="' + esc(v) + '">' + esc(v) + '</option>').join('');
+    const opts = values.map((v) => {
+      const val = (v && typeof v === 'object') ? v.value : v;
+      const label = (v && typeof v === 'object') ? v.label : v;
+      return '<option value="' + esc(val) + '">' + esc(label) + '</option>';
+    }).join('');
+    sel.innerHTML = '<option value="">' + placeholder + '</option>' + opts;
     if ([...sel.options].some((o) => o.value === cur)) sel.value = cur;
   }
 
   function setupFilters() {
     const types = [...new Set(state.allItems.map((i) => i.platform).filter(Boolean))].sort();
     const studios = [...new Set(state.allItems.map((i) => i.studio).filter(Boolean))].sort();
-    const tags = [...new Set(state.allItems.flatMap((i) => i.tags || []).filter(Boolean))].sort();
+    const tagCount = new Map();
+    for (const item of state.allItems) {
+      for (const t of (item.tags || [])) {
+        if (t) tagCount.set(t, (tagCount.get(t) || 0) + 1);
+      }
+    }
+    const tagOptions = [...tagCount.keys()]
+      .sort((a, b) => (tagCount.get(b) - tagCount.get(a)) || a.localeCompare(b))
+      .map((t) => ({ value: t, label: t + ' (' + tagCount.get(t) + ')' }));
     fillSelect(el.typeFilter, types, '全部类型');
     fillSelect(el.studioFilter, studios, '全部制作公司');
-    fillSelect(el.tagFilter, tags, '全部标签');
+    fillSelect(el.tagFilter, tagOptions, '全部标签');
   }
 
   function renderHero() {
