@@ -190,8 +190,7 @@
         '</div>'
       : '<p class="trailer-empty">暂无内嵌预告片</p>';
     const trailerLinks = '<p class="trailer-links">站外找样本视频：' +
-      '<a href="https://www.dmm.co.jp/search/=/searchstr/' + qRaw + '/" target="_blank" rel="noopener">DMM</a>' +
-      '<a href="https://www.dlsite.com/maniax/fsr/=/language/jp/keyword/' + qRaw + '/" target="_blank" rel="noopener">DLsite</a>' +
+      '<a href="https://www.dmm.co.jp/search/=/searchstr=' + qRaw + '" target="_blank" rel="noopener">DMM</a>' +
       '<a href="https://www.youtube.com/results?search_query=' + qRaw + '%20PV" target="_blank" rel="noopener">YouTube</a>' +
       '</p>';
     return '<div class="modal-hero" style="background-image:linear-gradient(180deg, rgba(0,0,0,.2), var(--panel)), url(\'' + esc(coverOf(item)) + '\')"></div>' +
