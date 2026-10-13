@@ -6,10 +6,15 @@
   }[c]));
   const stripTags = (s) => String(s ?? '').replace(/<[^>]*>/g, '');
 
+  const store = {
+    get(k) { try { return localStorage.getItem(k) || ''; } catch { return ''; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch { /* file:// 下可能被禁用 */ } },
+  };
+
   const state = {
     data: null,
     allItems: [],
-    favorites: new Set(JSON.parse(localStorage.getItem('anime-guide:favorites') || '[]')),
+    favorites: new Set(JSON.parse(store.get('anime-guide:favorites') || '[]')),
     filters: { q: '', type: '', studio: '', tag: '' },
     today: 1,
   };
@@ -48,14 +53,14 @@
   function isFav(id) { return state.favorites.has(id); }
 
   function persistFavorites() {
-    localStorage.setItem('anime-guide:favorites', JSON.stringify([...state.favorites]));
+    store.set('anime-guide:favorites', JSON.stringify([...state.favorites]));
     el.favCount.textContent = state.favorites.size;
   }
 
   function applyTheme(light) {
     document.body.classList.toggle('light', light);
     el.themeBtn.textContent = light ? '🌙' : '☀️';
-    localStorage.setItem('anime-guide:theme', light ? 'light' : 'dark');
+    store.set('anime-guide:theme', light ? 'light' : 'dark');
   }
 
   function toggleFav(id) {
@@ -255,11 +260,16 @@
 
   async function init() {
     state.today = todayWeekday();
-    applyTheme(localStorage.getItem('anime-guide:theme') === 'light');
+    applyTheme(store.get('anime-guide:theme') === 'light');
+    const inline = document.getElementById('app-data');
     try {
-      const res = await fetch('data.json');
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      state.data = await res.json();
+      if (inline && inline.textContent.trim()) {
+        state.data = JSON.parse(inline.textContent);
+      } else {
+        const res = await fetch('data.json');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        state.data = await res.json();
+      }
     } catch (err) {
       el.heroTitle.textContent = '数据加载失败';
       el.heroSummary.textContent = '请使用本地静态服务器（如 npx serve）预览，并确认 data.json 存在。';

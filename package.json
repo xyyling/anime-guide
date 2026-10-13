@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "fetch": "node scripts/fetch.mjs",
-    "preview": "npx serve ."
+    "fetch:r18": "node r18/scripts/fetch.mjs",
+    "build": "node scripts/fetch.mjs && node r18/scripts/fetch.mjs",
+    "preview": "npx serve _site",
+    "preview:r18": "npx serve _site/r18"
   }
 }

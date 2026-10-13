@@ -12,7 +12,10 @@ const LOCAL_COVER_EXTS = ['.jpg', '.jpeg', '.png', '.webp'];
 const ANILIST = 'https://graphql.anilist.co';
 const USER_AGENT = 'anime-guide-r18/1.0 (https://github.com/xyyling/anime-guide)';
 const CONCURRENCY = 8;
-const MAX_PAGES = 20;
+const MAX_PAGES = 100;
+const MIN_YEAR = 2000;
+const MIN_START_DATE = MIN_YEAR * 10000 + 101;
+const KEEP_FORMATS = ['OVA', 'ONA'];
 const EXCLUDE_FORMATS = new Set(['MOVIE', 'MUSIC', 'SPECIAL', 'TV', 'TV_SHORT']);
 const DEEPSEEK = 'https://api.deepseek.com/chat/completions';
 const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY || '';
@@ -53,16 +56,21 @@ function buildDate(d) {
 
 async function anilist(query, variables) {
   let lastErr;
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 6; i++) {
     try {
       const res = await fetch(ANILIST, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'User-Agent': USER_AGENT },
         body: JSON.stringify({ query, variables }),
       });
-      if (res.status === 429 || res.status >= 500) {
+      if (res.status === 429) {
+        lastErr = new Error('AniList HTTP 429');
+        await sleep(Math.min(15000 * (i + 1), 60000));
+        continue;
+      }
+      if (res.status >= 500) {
         lastErr = new Error('AniList HTTP ' + res.status);
-        await sleep(2000 * (i + 1));
+        await sleep(3000 * (i + 1));
         continue;
       }
       if (!res.ok) throw new Error('AniList HTTP ' + res.status);
@@ -71,17 +79,17 @@ async function anilist(query, variables) {
       return data.data;
     } catch (err) {
       lastErr = err;
-      if (i < 2) await sleep(1500 * (i + 1));
+      if (i < 5) await sleep(2000 * (i + 1));
     }
   }
   throw lastErr;
 }
 
 const QUERY = `
-query($page:Int,$perPage:Int){
+query($page:Int,$perPage:Int,$from:FuzzyDateInt,$formats:[MediaFormat]){
   Page(page:$page,perPage:$perPage){
     pageInfo{hasNextPage}
-    media(type:ANIME,isAdult:true,sort:START_DATE_DESC){
+    media(type:ANIME,isAdult:true,format_in:$formats,sort:START_DATE_DESC,startDate_greater:$from){
       id
       title{romaji english native}
       coverImage{large medium}
@@ -105,11 +113,11 @@ async function fetchAdultMedia() {
   const all = [];
   const perPage = 50;
   for (let page = 1; page <= MAX_PAGES; page++) {
-    const data = await anilist(QUERY, { page, perPage });
+    const data = await anilist(QUERY, { page, perPage, from: MIN_START_DATE, formats: KEEP_FORMATS });
     const media = (data.Page && data.Page.media) || [];
     all.push(...media);
     if (!(data.Page && data.Page.pageInfo && data.Page.pageInfo.hasNextPage)) break;
-    await sleep(300);
+    await sleep(2000);
   }
   return all;
 }
@@ -300,11 +308,11 @@ async function main() {
       return item;
     });
 
-    const before = items.length;
+    const fetched = items.length;
     const filtered = items.filter((x) => x.airDate
-      && Number(x.airDate.slice(0, 4)) >= 2010
+      && Number(x.airDate.slice(0, 4)) >= MIN_YEAR
       && !EXCLUDE_FORMATS.has(x.platform));
-    console.log('Kept ' + filtered.length + ' OVA/ONA titles from 2010 onward (was ' + before + ').');
+    console.log('Fetched ' + fetched + ' titles; kept ' + filtered.length + ' OVA/ONA from ' + MIN_YEAR + ' onward.');
 
     if (DEEPSEEK_KEY) {
       console.log('Translating titles, summaries & tags with DeepSeek…');
@@ -337,6 +345,9 @@ async function main() {
     console.warn('抓取 AniList 失败：' + err.message + '，回退到种子数据。');
     data = JSON.parse(await readFile(path.join(R18_ROOT, 'data.json'), 'utf8'));
     data.generatedAt = new Date().toISOString();
+    if (!Array.isArray(data.items) || !data.items.length) {
+      throw new Error('里番数据抓取失败，且无可用种子数据，已中止以避免发布空白页面。');
+    }
   }
 
   await assemble(data);

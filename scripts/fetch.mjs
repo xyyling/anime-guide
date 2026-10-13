@@ -1,4 +1,4 @@
-import { mkdir, writeFile, copyFile } from 'node:fs/promises';
+import { mkdir, writeFile, copyFile, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -286,7 +286,13 @@ async function assemble(data) {
   await mkdir(path.join(SITE, 'assets', 'covers'), { recursive: true });
 
   await writeFile(path.join(SITE, 'data.json'), JSON.stringify(data, null, 2));
-  await copyFile(path.join(ROOT, 'index.html'), path.join(SITE, 'index.html'));
+  const tpl = await readFile(path.join(ROOT, 'index.html'), 'utf8');
+  const inline = JSON.stringify(data).replace(/</g, '\\u003c');
+  const html = tpl.replace(
+    '<script src="js/app.js"></script>',
+    '<script id="app-data" type="application/json">' + inline + '</script>\n  <script src="js/app.js"></script>'
+  );
+  await writeFile(path.join(SITE, 'index.html'), html);
   await copyFile(path.join(ROOT, 'css', 'style.css'), path.join(SITE, 'css', 'style.css'));
   await copyFile(path.join(ROOT, 'js', 'app.js'), path.join(SITE, 'js', 'app.js'));
   await copyFile(path.join(ROOT, 'assets', 'placeholder.svg'), path.join(SITE, 'assets', 'placeholder.svg'));
