@@ -14,7 +14,9 @@ const USER_AGENT = 'anime-guide-r18/1.0 (https://github.com/xyyling/anime-guide)
 const CONCURRENCY = 8;
 const MAX_PAGES = 100;
 const MIN_YEAR = 2000;
-const MIN_START_DATE = MIN_YEAR * 10000 + 101;
+// AniList 用 YYYYMMDD 编码日期，只有"年"的条目是 YYYY0000（如 20000000）。
+// 阈值取上一年年末，才能把"只有年份 2000"的条目也拉进来，更早的再由客户端过滤掉。
+const MIN_START_DATE = (MIN_YEAR - 1) * 10000 + 1231;
 const KEEP_FORMATS = ['OVA', 'ONA'];
 const EXCLUDE_FORMATS = new Set(['MOVIE', 'MUSIC', 'SPECIAL', 'TV', 'TV_SHORT']);
 const DEEPSEEK = 'https://api.deepseek.com/chat/completions';
@@ -287,6 +289,7 @@ async function assemble(data) {
     '<script id="app-data" type="application/json">' + inline + '</script>\n  <script src="js/app.js"></script>'
   );
   await writeFile(path.join(SITE, 'index.html'), html);
+  await writeFile(path.join(SITE, 'archive.html'), html);
   await copyFile(path.join(R18_ROOT, 'js', 'app.js'), path.join(SITE, 'js', 'app.js'));
   await copyFile(path.join(ROOT, 'css', 'style.css'), path.join(SITE, 'css', 'style.css'));
   await copyFile(path.join(ROOT, 'assets', 'placeholder.svg'), path.join(SITE, 'assets', 'placeholder.svg'));

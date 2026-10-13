@@ -96,6 +96,7 @@ select {
 }
 .ghost-btn:hover { border-color: var(--text); }
 .theme-btn { min-width: 44px; }
+.page-link { text-decoration: none; white-space: nowrap; }
 
 .hero {
   position: relative;

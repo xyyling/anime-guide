@@ -45,9 +45,9 @@ npx serve _site          # 或 python -m http.server 8000 --directory _site
 
 ## 里番站（按年份展示）
 
-`r18/` 目录是一个独立的里番（成人动画）站点，与主站风格一致，但按发售年份分组展示。部署后的访问路径为 `<站点>/r18/`。
+`r18/` 目录是一个独立的里番（成人动画）站点，与主站风格一致，但按发售年份分组展示。列表按年份拆成两页，页面顶部可互相切换：`<站点>/r18/`（2014 年起）与 `<站点>/r18/archive.html`（2000–2013）。
 
-数据来自 [AniList](https://anilist.co) 公开 GraphQL API（`isAdult: true`），无需 token。标题和简介可用 [DeepSeek](https://platform.deepseek.com/) API 翻译成中文：在 GitHub 仓库的 Actions Secrets 里新建 `DEEPSEEK_API_KEY`，值为你的 DeepSeek API Key；未配置时保留日文标题与英文简介。`r18/scripts/fetch.mjs` 会拉取 2000 年至今的 OVA/ONA 里番（约 1400 部），下载封面并按发售日期倒序生成 `_site/r18/`。抓取失败且没有可用种子数据时会中止构建（非零退出），让 CI 保留上一次部署，避免发布空白页面。
+数据来自 [AniList](https://anilist.co) 公开 GraphQL API（`isAdult: true`），无需 token。标题和简介可用 [DeepSeek](https://platform.deepseek.com/) API 翻译成中文：在 GitHub 仓库的 Actions Secrets 里新建 `DEEPSEEK_API_KEY`，值为你的 DeepSeek API Key；未配置时保留日文标题与英文简介。`r18/scripts/fetch.mjs` 会拉取 2000 年至今的 OVA/ONA 里番，下载封面并按发售日期倒序生成 `_site/r18/`。抓取失败且没有可用种子数据时会中止构建（非零退出），让 CI 保留上一次部署，避免发布空白页面。
 
 ### 本地封面覆盖
 
