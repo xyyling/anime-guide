@@ -11,13 +11,6 @@
     set(k, v) { try { localStorage.setItem(k, v); } catch { /* file:// 下可能被禁用 */ } },
   };
 
-  // 列表按年份拆成两页：index 放近年，archive 放 2000 年代。
-  const SPLIT_YEAR = 2014;
-  const IS_ARCHIVE = /archive(\.html)?$/i.test(location.pathname);
-  const PAGE_SWITCH = IS_ARCHIVE
-    ? { href: 'index.html', label: '近年 ' + SPLIT_YEAR + ' 年起' }
-    : { href: 'archive.html', label: '早期 2000–' + (SPLIT_YEAR - 1) };
-
   const state = {
     data: null,
     allItems: [],
@@ -40,25 +33,17 @@
     favList: $('#favList'),
     hero: $('#hero'),
     heroBg: $('#hero .hero-bg'),
-    heroKicker: $('#heroKicker'),
     heroDate: $('#heroDate'),
     heroTitle: $('#heroTitle'),
     heroMeta: $('#heroMeta'),
     heroSummary: $('#heroSummary'),
     heroMore: $('#heroMore'),
     main: $('#main'),
-    pageLink: $('#pageLink'),
     modal: $('#modal'),
     modalBody: $('#modal .modal-body'),
   };
 
-  function allItemsRaw() { return (state.data && state.data.items) || []; }
-  function flatten() {
-    return allItemsRaw().filter((item) => {
-      const year = Number((item.airDate || '').slice(0, 4)) || 0;
-      return IS_ARCHIVE ? year < SPLIT_YEAR : year >= SPLIT_YEAR;
-    });
-  }
+  function flatten() { return (state.data && state.data.items) || []; }
   function coverOf(item) { return item.cover || 'assets/placeholder.svg'; }
   function isFav(id) { return state.favorites.has(id); }
 
@@ -269,7 +254,7 @@
   }
 
   function renderFavorites() {
-    const favs = allItemsRaw().filter((i) => isFav(i.id));
+    const favs = state.allItems.filter((i) => isFav(i.id));
     el.favList.innerHTML = favs.length
       ? favs.map((f) =>
           '<div class="fav-item" data-id="' + f.id + '">' +
@@ -287,14 +272,6 @@
     renderRows();
     renderFavorites();
     el.favCount.textContent = state.favorites.size;
-  }
-
-  function setupPageSwitch() {
-    if (el.pageLink) {
-      el.pageLink.href = PAGE_SWITCH.href;
-      el.pageLink.textContent = PAGE_SWITCH.label;
-    }
-    if (el.heroKicker) el.heroKicker.textContent = IS_ARCHIVE ? '早期里番' : '最新里番';
   }
 
   el.main.addEventListener('click', (e) => {
@@ -328,7 +305,7 @@
     if (rm) { toggleFav(Number(rm.dataset.remove)); return; }
     const itemEl = e.target.closest('.fav-item');
     if (itemEl) {
-      const item = allItemsRaw().find((i) => i.id === Number(itemEl.dataset.id));
+      const item = state.allItems.find((i) => i.id === Number(itemEl.dataset.id));
       if (item) openModal(item);
     }
   });
@@ -349,7 +326,6 @@
 
   async function init() {
     applyTheme(store.get('anime-guide-r18:theme') === 'light');
-    setupPageSwitch();
     const inline = document.getElementById('app-data');
     try {
       if (inline && inline.textContent.trim()) {

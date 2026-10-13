@@ -289,7 +289,6 @@ async function assemble(data) {
     '<script id="app-data" type="application/json">' + inline + '</script>\n  <script src="js/app.js"></script>'
   );
   await writeFile(path.join(SITE, 'index.html'), html);
-  await writeFile(path.join(SITE, 'archive.html'), html);
   await copyFile(path.join(R18_ROOT, 'js', 'app.js'), path.join(SITE, 'js', 'app.js'));
   await copyFile(path.join(ROOT, 'css', 'style.css'), path.join(SITE, 'css', 'style.css'));
   await copyFile(path.join(ROOT, 'assets', 'placeholder.svg'), path.join(SITE, 'assets', 'placeholder.svg'));
